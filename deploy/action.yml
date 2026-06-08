@@ -1,0 +1,50 @@
+name: Deploy
+description: Build and deploy to Railway
+
+inputs:
+  railway_project_id:
+    required: true
+  railway_environment_id:
+    required: true
+  railway_service_id:
+    required: true
+  railway_token:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Setup Node 24
+      uses: actions/setup-node@v6
+      with:
+        node-version: 24
+
+    - name: Enable Corepack
+      run: corepack enable
+      shell: bash
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Build code
+      run: pnpm build
+      shell: bash
+
+    - name: Deploy to Railway
+      run: |
+        pnpm dlx @railway/cli up \
+          --ci \
+          --project "$RAILWAY_PROJECT_ID" \
+          --environment "$RAILWAY_ENVIRONMENT_ID" \
+          --service "$RAILWAY_SERVICE_ID" \
+          -m "${{ github.ref_name }}"
+      shell: bash
+      env:
+        RAILWAY_TOKEN: ${{ inputs.railway_token }}
+        RAILWAY_PROJECT_ID: ${{ inputs.railway_project_id }}
+        RAILWAY_ENVIRONMENT_ID: ${{ inputs.railway_environment_id }}
+        RAILWAY_SERVICE_ID: ${{ inputs.railway_service_id }}
