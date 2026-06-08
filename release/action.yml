@@ -4,26 +4,9 @@ description: Generate changelog and publish GitHub release
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
+    - uses: merkaly-io/actions/setup@master
 
-    - name: Setup Node 24
-      uses: actions/setup-node@v6
-      with:
-        node-version: 24
-
-    - name: Enable Corepack
-      run: corepack enable
-      shell: bash
-
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-      shell: bash
-
-    - name: Generate release notes
-      run: |
+    - run: |
         CURRENT_TAG="${GITHUB_REF_NAME}"
         PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$CURRENT_TAG" | head -n 1)"
 
@@ -34,8 +17,7 @@ runs:
         fi
       shell: bash
 
-    - name: Publish GitHub release
-      uses: softprops/action-gh-release@v2
+    - uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.ref_name }}
         name: ${{ github.ref_name }}
