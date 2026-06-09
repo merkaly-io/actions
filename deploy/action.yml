@@ -1,5 +1,5 @@
 name: Deploy
-description: Build and deploy to Railway
+description: Build and deploy to Railway, then record a GitHub deployment.
 
 inputs:
   railway_project_id:
@@ -10,6 +10,10 @@ inputs:
     required: true
   railway_token:
     required: true
+  environment:
+    description: GitHub environment name shown in the deployment record.
+    required: false
+    default: production
 
 runs:
   using: composite
@@ -19,16 +23,68 @@ runs:
     - run: pnpm build
       shell: bash
 
-    - run: |
-        pnpm dlx @railway/cli up \
-          --ci \
-          --project "$RAILWAY_PROJECT_ID" \
-          --environment "$RAILWAY_ENVIRONMENT_ID" \
-          --service "$RAILWAY_SERVICE_ID" \
-          -m "${{ github.ref_name }}"
+    - name: Create GitHub deployment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        payload=$(jq -n \
+          --arg ref "${{ github.ref_name }}" \
+          --arg env "${{ inputs.environment }}" \
+          '{ref: $ref, environment: $env, auto_merge: false, required_contexts: []}')
+        deployment_id=$(echo "$payload" \
+          | gh api "repos/$GITHUB_REPOSITORY/deployments" --input - --jq '.id')
+        echo "RAILWAY_GH_DEPLOYMENT_ID=$deployment_id" >> "$GITHUB_ENV"
+        gh api "repos/$GITHUB_REPOSITORY/deployments/$deployment_id/statuses" \
+          -f state=in_progress \
+          -f log_url="${{ github.server_url }}/$GITHUB_REPOSITORY/actions/runs/${{ github.run_id }}"
+
+    - name: Deploy to Railway
       shell: bash
       env:
         RAILWAY_TOKEN: ${{ inputs.railway_token }}
         RAILWAY_PROJECT_ID: ${{ inputs.railway_project_id }}
         RAILWAY_ENVIRONMENT_ID: ${{ inputs.railway_environment_id }}
         RAILWAY_SERVICE_ID: ${{ inputs.railway_service_id }}
+      run: |
+        pnpm dlx @railway/cli up \
+          --ci \
+          --project "$RAILWAY_PROJECT_ID" \
+          --environment "$RAILWAY_ENVIRONMENT_ID" \
+          --service "$RAILWAY_SERVICE_ID" \
+          -m "${{ github.ref_name }}"
+
+    - name: Resolve Railway service URL
+      if: success()
+      shell: bash
+      env:
+        RAILWAY_TOKEN: ${{ inputs.railway_token }}
+      run: |
+        service_url=$(pnpm dlx @railway/cli domain \
+          --project "${{ inputs.railway_project_id }}" \
+          --environment "${{ inputs.railway_environment_id }}" \
+          --service "${{ inputs.railway_service_id }}" \
+          --json | jq -r '.domains[0] // .domain // empty')
+        echo "RAILWAY_SERVICE_URL=$service_url" >> "$GITHUB_ENV"
+
+    - name: Update deployment status — success
+      if: success()
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh api "repos/$GITHUB_REPOSITORY/deployments/$RAILWAY_GH_DEPLOYMENT_ID/statuses" \
+          -f state=success \
+          -f environment_url="$RAILWAY_SERVICE_URL" \
+          -f log_url="${{ github.server_url }}/$GITHUB_REPOSITORY/actions/runs/${{ github.run_id }}"
+
+    - name: Update deployment status — failure
+      if: failure()
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        [ -n "$RAILWAY_GH_DEPLOYMENT_ID" ] || exit 0
+        gh api "repos/$GITHUB_REPOSITORY/deployments/$RAILWAY_GH_DEPLOYMENT_ID/statuses" \
+          -f state=failure \
+          -f log_url="${{ github.server_url }}/$GITHUB_REPOSITORY/actions/runs/${{ github.run_id }}"
