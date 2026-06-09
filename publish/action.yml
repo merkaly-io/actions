@@ -23,5 +23,5 @@ runs:
         node-version: 24
         registry-url: https://registry.npmjs.org
 
-    - run: pnpm publish --access public
+    - run: pnpm publish --access public --no-git-checks
       shell: bash
