@@ -15,10 +15,13 @@ runs:
         test "$TAG_VERSION" = "$PACKAGE_VERSION"
       shell: bash
 
+    - run: pnpm pack --dry-run
+      shell: bash
+
     - uses: actions/setup-node@v6
       with:
         node-version: 24
         registry-url: https://registry.npmjs.org
 
-    - run: npm publish --access public
+    - run: pnpm publish --access public
       shell: bash
