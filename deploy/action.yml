@@ -20,16 +20,13 @@ runs:
   steps:
     - uses: merkaly-io/actions/setup@master
 
-    - run: pnpm build
-      shell: bash
-
     - name: Create GitHub deployment
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         payload=$(jq -n \
-          --arg ref "${{ github.ref_name }}" \
+          --arg ref "${{ github.sha }}" \
           --arg env "${{ inputs.environment }}" \
           '{ref: $ref, environment: $env, auto_merge: false, required_contexts: []}')
         deployment_id=$(echo "$payload" \
@@ -38,6 +35,9 @@ runs:
         gh api "repos/$GITHUB_REPOSITORY/deployments/$deployment_id/statuses" \
           -f state=in_progress \
           -f log_url="${{ github.server_url }}/$GITHUB_REPOSITORY/actions/runs/${{ github.run_id }}"
+
+    - run: pnpm build
+      shell: bash
 
     - name: Deploy to Railway
       shell: bash
