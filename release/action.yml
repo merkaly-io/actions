@@ -7,7 +7,6 @@ runs:
     - uses: merkaly-io/actions/setup@master
 
     - run: |
-        git fetch origin --tags --force
         CURRENT_TAG="${GITHUB_REF_NAME}"
         PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$CURRENT_TAG" | head -n 1)"
 
