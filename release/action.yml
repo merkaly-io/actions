@@ -8,7 +8,7 @@ runs:
 
     - run: |
         CURRENT_TAG="${GITHUB_REF_NAME}"
-        PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$CURRENT_TAG" | head -n 1)"
+        PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$CURRENT_TAG" | head -n 1 || true)"
 
         if [ -n "$PREVIOUS_TAG" ]; then
           pnpm exec changelogen --from "$PREVIOUS_TAG" --to "$CURRENT_TAG" --no-output > release-notes.md
