@@ -6,7 +6,7 @@ Reusable GitHub Actions for Merkaly repositories — setup, deploy, publish, and
 
 ### `setup`
 
-Checkout, enable corepack, set up Node 24 with pnpm cache, and install dependencies.
+Checkout, enable corepack, set up Node 24 with pnpm cache, and install dependencies. On a `vX.Y.Z` tag it also sets `package.json` `version` from the tag (not committed): releases are tag-only, `master` never carries the version bump.
 
 ```yaml
 - uses: merkaly-io/actions/setup@master
