@@ -1,6 +1,6 @@
 # merkaly-io/actions
 
-Reusable GitHub Actions for Merkaly repositories — setup, deploy, publish, and release.
+Reusable GitHub Actions for Merkaly repositories: setup, deploy, publish, release and dependabot.
 
 ## Actions
 
@@ -26,7 +26,7 @@ Build and deploy to Railway, then record a GitHub deployment.
     railway_project_id: ${{ vars.RAILWAY_PROJECT_ID }}
     railway_environment_id: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
     railway_service_id: ${{ vars.RAILWAY_SERVICE_ID }}
-    railway_token: ${{ secrets.RAILWAY_TOKEN }}
+    railway_token: ${{ secrets.RAILWAY_BACKEND_TOKEN }} # or RAILWAY_FRONTEND_TOKEN (organization secrets)
 ```
 
 | Input | Required | Default | Description |
@@ -97,7 +97,7 @@ jobs:
           railway_project_id: ${{ vars.RAILWAY_PROJECT_ID }}
           railway_environment_id: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
           railway_service_id: ${{ vars.RAILWAY_SERVICE_ID }}
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          railway_token: ${{ secrets.RAILWAY_BACKEND_TOKEN }} # or RAILWAY_FRONTEND_TOKEN (organization secrets)
 
   release:
     needs: deploy
@@ -107,3 +107,25 @@ jobs:
     steps:
       - uses: merkaly-io/actions/release@master
 ```
+
+---
+
+### `dependabot`
+
+Last step of the PR workflow (after lint and build). On Dependabot PRs, merkaly-bot approves
+**patch and minor** updates and enables auto-merge; the merge happens once the required checks of
+the `master` ruleset pass. **Major** updates are left for manual review.
+
+```yaml
+- uses: merkaly-io/actions/dependabot@master
+  with:
+    private-key: ${{ secrets.MERKALY_BOT_PRIVATE_KEY }}
+```
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `private-key` | yes | — | merkaly-bot GitHub App private key |
+| `app-id` | no | `3214443` | merkaly-bot GitHub App id |
+
+Dependabot-triggered runs cannot read Actions secrets: `MERKALY_BOT_PRIVATE_KEY` must also exist as
+an organization **Dependabot** secret.

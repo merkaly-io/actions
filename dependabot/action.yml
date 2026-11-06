@@ -1,12 +1,36 @@
-name: Dependabot Auto-merge
-description: Auto-merge Dependabot PRs after CI passes
+name: Dependabot auto-approve
+description: merkaly-bot approves Dependabot patch/minor updates and enables auto-merge; majors stay for manual review
+
+inputs:
+  private-key:
+    description: merkaly-bot GitHub App private key (pass secrets.MERKALY_BOT_PRIVATE_KEY; Dependabot runs read it from Dependabot secrets)
+    required: true
+  app-id:
+    description: merkaly-bot GitHub App id
+    required: false
+    default: '3214443'
 
 runs:
   using: composite
   steps:
-    - if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' }}
-      run: gh pr merge --squash "$PR_URL"
+    - id: metadata
+      if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' }}
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: ${{ github.token }}
+
+    - id: token
+      if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+
+    - if: ${{ steps.token.outputs.token != '' }}
+      run: | # the approval satisfies the ruleset; auto-merge waits for the required checks
+        gh pr review --approve "$PR_URL"
+        gh pr merge --auto --squash "$PR_URL"
       shell: bash
       env:
         PR_URL: ${{ github.event.pull_request.html_url }}
-        GH_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ steps.token.outputs.token }}
