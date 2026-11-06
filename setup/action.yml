@@ -19,3 +19,7 @@ runs:
 
     - run: pnpm install --frozen-lockfile
       shell: bash
+
+    - if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      run: npm pkg set version="${GITHUB_REF_NAME#v}" # releases: the tag is the version, master never carries the bump
+      shell: bash

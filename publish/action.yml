@@ -9,10 +9,9 @@ runs:
         git merge-base --is-ancestor "$GITHUB_SHA" origin/master
       shell: bash
 
-    - run: |
-        TAG_VERSION="${GITHUB_REF_NAME#v}"
-        PACKAGE_VERSION="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
-        test "$TAG_VERSION" = "$PACKAGE_VERSION"
+    - run: | # setup already wrote the tag version into package.json
+        echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+        test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./package.json').version")"
       shell: bash
 
     - run: pnpm pack --dry-run
