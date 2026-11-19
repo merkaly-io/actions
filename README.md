@@ -1,6 +1,6 @@
 # merkaly-io/actions
 
-Reusable GitHub Actions for Merkaly repositories: setup, deploy, publish, release and dependabot.
+Reusable GitHub Actions for Merkaly repositories: setup, deploy, publish, release, cache-cleanup and dependabot.
 
 ## Actions
 
@@ -66,13 +66,13 @@ No inputs. Requires `NODE_AUTH_TOKEN` to be set (via `actions/setup-node` regist
 
 ### `release`
 
-Generate a changelog from git history and publish a GitHub Release.
+Generate a changelog from git history, publish a GitHub Release and delete the caches of the release tag ref (see `cache-cleanup`).
 
 ```yaml
 - uses: merkaly-io/actions/release@master
 ```
 
-No inputs. Requires `contents: write` permission on the calling job.
+No inputs. Requires `contents: write` and `actions: write` permissions on the calling job (without `actions: write` the cache cleanup only logs a warning).
 
 ---
 
@@ -103,9 +103,55 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
     steps:
       - uses: merkaly-io/actions/release@master
+```
+
+---
+
+### `cache-cleanup`
+
+Delete every GitHub Actions cache of a ref that no other run can reuse: a PR merge ref
+(`refs/pull/<n>/merge`) once the PR is closed, or a release tag ref once the release ends.
+Any other ref (for example `refs/heads/master`) is skipped. It never fails the job: with no caches
+it exits 0, and on an API error it only logs a warning.
+
+```yaml
+- uses: merkaly-io/actions/cache-cleanup@master
+```
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `ref` | no | `github.ref` | Ref whose caches are deleted |
+
+**Required job permission:**
+```yaml
+permissions:
+  actions: write
+```
+
+PR cleanup, as a job of `pull_request.yml` (it must also listen to `closed`):
+
+```yaml
+on:
+  pull_request:
+    branches: [ master ]
+    types: [ opened, synchronize, reopened, closed ]
+
+jobs:
+  build:
+    if: github.event.action != 'closed'
+    # ...
+
+  cache:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: merkaly-io/actions/cache-cleanup@master
 ```
 
 ---
