@@ -22,3 +22,5 @@ runs:
         tag_name: ${{ github.ref_name }}
         name: ${{ github.ref_name }}
         body_path: release-notes.md
+
+    - uses: merkaly-io/actions/cache-cleanup@master # drop the tag ref caches; no other run can reuse them
