@@ -1,0 +1,24 @@
+name: Cache cleanup
+description: Delete the GitHub Actions caches of a PR merge ref or a release tag ref; branch refs (master) are never touched
+
+inputs:
+  ref:
+    description: Ref whose caches are deleted (refs/pull/<n>/merge or refs/tags/<tag>); defaults to github.ref
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - run: |
+        case "$REF" in
+          refs/pull/*/merge|refs/tags/*) ;;
+          *) echo "::notice::Skipping cache cleanup for $REF (only PR merge refs and tags)"; exit 0 ;;
+        esac
+
+        gh cache delete --all --ref "$REF" --succeed-on-no-caches --repo "$GITHUB_REPOSITORY" \
+          || echo "::warning::Could not delete caches for $REF (needs permissions: actions: write)" # never fails the job
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REF: ${{ inputs.ref || github.ref }}
